@@ -1,0 +1,52 @@
+name: Genereaza Tag Unic Facultate
+
+on:
+  workflow_dispatch:
+    inputs:
+      universitate:
+        description: 'Numele universitatii'
+        required: true
+        type: string
+      facultate:
+        description: 'Numele facultatii'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install opencode
+        run: npm install -g opencode-ai@latest
+
+      - name: Genereaza tag cu opencode
+        id: generate
+        run: |
+          TAG=$(node scripts/generate_tag.mjs \
+            --universitate="${{ inputs.universitate }}" \
+            --facultate="${{ inputs.facultate }}")
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Generated tag: $TAG"
+
+      - name: Commit si push fisierul actualizat
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add centralized/unicodes.csv
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto: adauga tag ${{ steps.generate.outputs.tag }} pentru ${{ inputs.facultate }} @ ${{ inputs.universitate }}"
+            git push
+          fi

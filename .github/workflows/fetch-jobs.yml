@@ -1,0 +1,38 @@
+name: Fetch & Match Jobs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-match:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install opencode
+        run: npm install -g opencode-ai@latest
+
+      - name: Run fetch & match
+        run: node scripts/fetch_agent_jobs.mjs
+
+      - name: Commit & push jobs.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add jobs.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+            git commit -m "auto: actualizeaza jobs.json ($(date -u +%Y-%m-%d))"
+            git push
+          fi

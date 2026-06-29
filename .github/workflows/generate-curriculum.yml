@@ -1,0 +1,48 @@
+name: Genereaza Curriculum Facultate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-curriculum:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils curl
+          npm install -g opencode-ai@latest
+
+      - name: Parse local_tag.md
+        id: parse
+        run: |
+          TAG=$(head -1 conf/local_tag.md | tr -d '\n\r')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Tag: $TAG"
+
+      - name: Generate curriculum with opencode
+        run: node scripts/generate_curriculum.mjs
+
+      - name: Commit si push curriculum
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add filter/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            TAG="${{ steps.parse.outputs.tag }}"
+            git commit -m "auto: actualizeaza curriculum $TAG"
+            git push
+          fi
